@@ -5,17 +5,15 @@ Maintainer: Deepin Sysdev <sysdev@deepin.com>
 Build-Depends: debhelper (>= 8.0.0),
  pkg-config,
  cmake,
- libdtkwidget-dev,
- libdtkcore-dev,
- qttools5-dev-tools,
- libdtkcore5-bin,
- qtbase5-private-dev,
+ libdtk6widget-dev,
+ libdtk6core-dev,
+ libdtk6core-bin,
+ qt6-tools-dev-tools,
+ qt6-base-private-dev,
  libgio-qt-dev,
  libdframeworkdbus-dev,
  libgtest-dev,
  extra-cmake-modules,
- libdwayland-dev,
- libkf5wayland-dev,
  systemd
 Standards-Version: 3.9.5
 Homepage: https://github.com/linuxdeepin/dde-clipboard

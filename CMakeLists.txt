@@ -5,6 +5,7 @@ set(BIN_NAME dde-clipboard)
 project(${BIN_NAME})
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)
+set(QT_VERSION_MAJOR 6)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
@@ -37,30 +38,18 @@ endif ()
 
 # Find the library
 find_package(PkgConfig REQUIRED)
-find_package(Dtk COMPONENTS Widget Core REQUIRED)
-find_package(Qt5 COMPONENTS Core Gui Widgets DBus Test Concurrent REQUIRED)
+find_package(Dtk6 COMPONENTS Widget Core Tools REQUIRED)
+find_package(Qt6 COMPONENTS Core Gui Widgets DBus WaylandClient Test Concurrent REQUIRED)
+find_package(DDEShell REQUIRED)
 
 find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
-find_package(DWayland REQUIRED)
 
-pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-qt)
+pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-qt6)
 
 if (NOT DEFINED SYSTEMD_USER_UNIT_DIR)
     pkg_get_variable(SYSTEMD_USER_UNIT_DIR systemd systemduserunitdir)
 endif()
-
-find_package(DtkTools REQUIRED)
-function(generation_dbus_adaptor xml class_name class_file option)
-    execute_process(COMMAND qdbusxml2cpp ${option} -a ${class_file} -c ${class_name} ${xml}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-endfunction(generation_dbus_adaptor)
-
-set(DBUS_INTERFACE ${PROJECT_SOURCE_DIR}/dbus/interface)
-function(generation_dbus_interface xml class_name class_file)
-    execute_process(COMMAND ${DTK_XML2CPP} -c ${class_name} -p ${class_file} ${xml}
-        WORKING_DIRECTORY ${DBUS_INTERFACE})
-endfunction(generation_dbus_interface)
 
 include_directories(
     dde-clipboard
@@ -70,30 +59,11 @@ include_directories(
 )
 
 #----------------------------dde-clipboard------------------------------
-generation_dbus_adaptor(
-    ${CMAKE_SOURCE_DIR}/dde-clipboard/org.deepin.dde.Clipboard1.xml
-    ClipboardAdaptor
-    ${CMAKE_CURRENT_BINARY_DIR}/clipboard_adaptor
-    -N
-)
 
-generation_dbus_interface(
-    ${CMAKE_SOURCE_DIR}/dbus/org.deepin.dde.Display1.Monitor.xml
-    Monitor
-    ${DBUS_INTERFACE}/monitor_interface
-)
-
-generation_dbus_interface(
-    ${CMAKE_SOURCE_DIR}/dbus/org.deepin.dde.Display1.xml
-    Display1
-    ${DBUS_INTERFACE}/display_interface
-)
-
-generation_dbus_interface(
-    ${CMAKE_SOURCE_DIR}/dbus/org.deepin.dde.daemon.Dock1.xml
-    Dock1
-    ${DBUS_INTERFACE}/dock_interface
-)
+qt_add_dbus_adaptor(DBUS_INTERFACES ${CMAKE_SOURCE_DIR}/dde-clipboard/org.deepin.dde.Clipboard1.xml mainwindow.h MainWindow)
+dtk_add_dbus_interface(DBUS_INTERFACES ${CMAKE_SOURCE_DIR}/dbus/org.deepin.dde.Display1.Monitor.xml Monitor)
+dtk_add_dbus_interface(DBUS_INTERFACES ${CMAKE_SOURCE_DIR}/dbus/org.deepin.dde.Display1.xml Display1)
+dtk_add_dbus_interface(DBUS_INTERFACES ${CMAKE_SOURCE_DIR}/dbus/org.deepin.dde.daemon.Dock1.xml Dock1)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/dbus/interface
@@ -102,12 +72,6 @@ include_directories(
 )
 
 aux_source_directory(dbus/types DBUS_TYPES)
-aux_source_directory(dbus/interface DBUS_INTERFACES)
-
-set(Clipboard_DBUS_SCRS
-    ${CMAKE_CURRENT_BINARY_DIR}/clipboard_adaptor.h
-    ${CMAKE_CURRENT_BINARY_DIR}/clipboard_adaptor.cpp
-)
 
 file(GLOB_RECURSE Clipboard_SCRS
     "dde-clipboard/*.h"
@@ -124,14 +88,15 @@ add_executable(${BIN_NAME}
 )
 
 target_link_libraries(${BIN_NAME} PRIVATE
-    Dtk::Widget
-    Dtk::Core
+    Dtk6::Widget
+    Dtk6::Core
     PkgConfig::GIO
-    Qt5::Core
-    Qt5::Widgets
-    Qt5::GuiPrivate
-    Qt5::Gui
-    Qt5::DBus
+    Qt6::Core
+    Qt6::Widgets
+    Qt6::GuiPrivate
+    Qt6::Gui
+    Qt6::DBus
+    Dde::Shell
 )
 
 macro(install_symlink filepath wantsdir)
@@ -178,13 +143,16 @@ add_executable(${BIN_NAME}
     ${dde-clipboard-daemon_SCRS}
 )
 
+qt_generate_wayland_protocol_client_sources(${BIN_NAME} FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/dde-clipboard-daemon/protocol/wlr-data-control-unstable-v1.xml)
+
 target_link_libraries(${BIN_NAME} PRIVATE
-  Qt5::Gui
-  Qt5::DBus
-  Qt5::Widgets
-  Dtk::Core
-  Qt5::Concurrent
-  DWaylandClient
+  Qt6::Gui
+  Qt6::DBus
+  Qt6::Concurrent
+  Qt6::WaylandClient
+  Qt6::WaylandClientPrivate
+  Dtk6::Core
 )
 
 install(TARGETS ${BIN_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -235,13 +203,14 @@ add_executable(${UT_BIN_NAME}
 target_compile_options(${UT_BIN_NAME} PRIVATE -fprofile-arcs -ftest-coverage)
 
 target_link_libraries(${UT_BIN_NAME} PRIVATE
-    Dtk::Widget
+    Dtk6::Widget
     PkgConfig::GIO
-    Qt5::Core
-    Qt5::Widgets
-    Qt5::DBus
-    Qt5::Test
-    Qt5::GuiPrivate
+    Qt6::Core
+    Qt6::Widgets
+    Qt6::DBus
+    Qt6::Test
+    Qt6::GuiPrivate
+    Dde::Shell
     -lpthread
     -lgcov
     -lgtest

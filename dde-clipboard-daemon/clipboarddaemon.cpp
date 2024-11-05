@@ -8,6 +8,7 @@
 
 #include <QDBusError>
 #include <QDBusConnection>
+#include <QGuiApplication>
 
 ClipboardDaemon::ClipboardDaemon(QObject *parent)
     : QObject(parent)
@@ -24,7 +25,7 @@ ClipboardDaemon::ClipboardDaemon(QObject *parent)
     // 剪切板管理和提供UI数据的功能合并，WaylandCopyClient只实例化一次
 #if 0
     // 实例化wayland 剪切板管理器
-    if (qEnvironmentVariable("XDG_SESSION_TYPE").contains("wayland")) {
+    if (QStringLiteral("wayland") == qGuiApp->platformName()) {
         WaylandCopyClient *waylandClipboardManager = new WaylandCopyClient(this);
         waylandClipboardManager->init(true);
     }
